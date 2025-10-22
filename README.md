@@ -105,41 +105,23 @@ namespace UltimateProject
 
   
 
-            // 🔥 LINQ ЗАПРОСЫ ДЛЯ КАЖДОГО КОНТЕКСТА
+            // 🔥 ИСПРАВЛЕННЫЕ LINQ ЗАПРОСЫ ДЛЯ КАЖДОГО КОНТЕКСТА
 
-  
+Console.WriteLine("\n=== GENERIC КОНТЕКСТ ===");
+var genericAll = from entity in genericContext.MainEntities
+                 select entity;
+genericAll.ToList().ForEach(g => Console.WriteLine($"   {g.Name} - {g.Location}"));
 
-            Console.WriteLine("\n=== GENERIC КОНТЕКСТ ===");
+Console.WriteLine("\n=== ALTER КОНТЕКСТ ===");
+var alterAll = from entity in alterContext.MainEntities
+               select entity;
+alterAll.ToList().ForEach(a => Console.WriteLine($"   {a.Name} - {a.Location}"));
 
-            var genericAll = genericContext.MainEntities.ToList();
-
-            genericAll.ForEach(g => Console.WriteLine($"   {g.Name} - {g.Location}"));
-
-  
-
-            Console.WriteLine("\n=== ALTER КОНТЕКСТ ===");
-
-            var alterAll = alterContext.MainEntities.ToList();
-
-            alterAll.ForEach(a => Console.WriteLine($"   {a.Name} - {a.Location}"));
-
-  
-
-            Console.WriteLine("\n=== ОБЪЕДИНЕННЫЕ РЕЗУЛЬТАТЫ ===");
-
-            var allEntities = genericAll.Concat(alterAll)
-
-                .OrderBy(e => e.Name)
-
-                .ToList();
-
-            allEntities.ForEach(e => Console.WriteLine($"   {e.Name} ({e.Location})"));
-
-        }
-
-    }
-
-}
+Console.WriteLine("\n=== ОБЪЕДИНЕННЫЕ РЕЗУЛЬТАТЫ ===");
+var allEntities = (from entity in genericAll.Concat(alterAll)
+                   orderby entity.Name
+                   select entity).ToList();
+allEntities.ForEach(e => Console.WriteLine($"   {e.Name} ({e.Location})"));
 
 ```
 
