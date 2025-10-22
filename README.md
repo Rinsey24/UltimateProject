@@ -402,13 +402,23 @@ context.MainEntities
 
 ```csharp
 
-var all = context.MainEntities.ToList();
+// 🔥 ИСПРАВЛЕННЫЕ LINQ ЗАПРОСЫ
 
+// Получение всех записей
+var all = (from entity in context.MainEntities
+           select entity).ToList();
+
+// Поиск по ID (Find не является LINQ методом, это метод DbContext)
 var byId = context.MainEntities.Find(1);
 
-var firstN = context.MainEntities.Take(5).ToList();
+// Получение первых N записей
+var firstN = (from entity in context.MainEntities
+              select entity).Take(5).ToList();
 
-var sorted = context.MainEntities.OrderBy(m => m.Name).ToList();
+// Сортировка по имени
+var sorted = (from entity in context.MainEntities
+              orderby entity.Name
+              select entity).ToList();
 
 ```
 
@@ -420,23 +430,24 @@ var sorted = context.MainEntities.OrderBy(m => m.Name).ToList();
 
 ```csharp
 
-var withRelations = context.MainEntities.Include(m => m.RelatedEntities).ToList();
+// 🔥 ИСПРАВЛЕННЫЕ LINQ ЗАПРОСЫ С ВКЛЮЧЕНИЕМ И АГРЕГАЦИЕЙ
 
-  
+// Запрос с включением связанных сущностей
+var withRelations = (from entity in context.MainEntities.Include(m => m.RelatedEntities)
+                     select entity).ToList();
 
-var withCounts = context.MainEntities
+// Запрос с проекцией и подсчетом количества связанных сущностей
+var withCounts = (from entity in context.MainEntities
+                  select new 
+                  { 
+                      entity.Name, 
+                      Count = entity.RelatedEntities.Count 
+                  }).ToList();
 
-    .Select(m => new { m.Name, Count = m.RelatedEntities.Count })
-
-    .ToList();
-
-  
-
-var withManyRelations = context.MainEntities
-
-    .Where(m => m.RelatedEntities.Count >= 2)
-
-    .ToList();
+// Запрос с фильтрацией по количеству связанных сущностей
+var withManyRelations = (from entity in context.MainEntities
+                         where entity.RelatedEntities.Count >= 2
+                         select entity).ToList();
 
 ```
 
@@ -448,31 +459,41 @@ var withManyRelations = context.MainEntities
 
 ```csharp
 
-var grouped = context.MainEntities
+// 🔥 РАСШИРЕННЫЕ ГРУППИРОВКИ В LINQ QUERY SYNTAX
 
-    .GroupBy(m => m.Description)
+// Группировка по нескольким полям
+var multiFieldGroup = (from entity in context.MainEntities
+                       group entity by new { entity.Description, entity.Category } into g
+                       select new
+                       {
+                           Description = g.Key.Description,
+                           Category = g.Key.Category,
+                           Count = g.Count(),
+                           FirstItem = g.First().Name
+                       }).ToList();
 
-    .Select(g => new { Key = g.Key, Count = g.Count() })
+// Группировка с фильтрацией до агрегации
+var filteredGroup = (from entity in context.MainEntities
+                     where entity.IsActive
+                     group entity by entity.Description into g
+                     where g.Count() >= 5  // фильтрация групп
+                     select new
+                     {
+                         Description = g.Key,
+                         Count = g.Count(),
+                         MaxValue = g.Max(x => x.SomeValue)
+                     }).ToList();
 
-    .ToList();
-
-  
-
-var complexGroup = context.MainEntities
-
-    .GroupBy(m => m.Description)
-
-    .Select(g => new {
-
-        Description = g.Key,
-
-        Total = g.Count(),
-
-        AvgRelations = g.Average(m => m.RelatedEntities.Count)
-
-    })
-
-    .ToList();
+// Группировка с сортировкой результатов
+var sortedGroups = (from entity in context.MainEntities
+                    group entity by entity.Description into g
+                    orderby g.Count() descending, g.Key
+                    select new
+                    {
+                        Description = g.Key,
+                        Count = g.Count(),
+                        AvgAge = g.Average(x => x.Age)
+                    }).ToList();
 
 ```
 
@@ -510,24 +531,51 @@ var complexGroup = context.MainEntities
 
 ```csharp
 
+// 🔥 НИЗКОУРОВНЕВОЕ ВЗАИМОДЕЙСТВИЕ С БАЗОЙ ДАННЫХ
+
 // Получение низкоуровневого соединения с базой данных
 var connection = context.Database.GetDbConnection();
 
 // Вывод информации о сервере базы данных (например: localhost, имя файла SQLite и т.д.)
 Console.WriteLine($"База: {connection.DataSource}");
+Console.WriteLine($"База данных: {connection.Database}");
+Console.WriteLine($"Тип сервера: {connection.GetType().Name}");
 
 // Получение метаданных всех сущностей (таблиц), зарегистрированных в контексте
 var tables = context.Model.GetEntityTypes();
 
 // Перебор всех таблиц и вывод их имен
+Console.WriteLine("\n=== ТАБЛИЦЫ В КОНТЕКСТЕ ===");
 foreach (var table in tables)
-    Console.WriteLine(table.GetTableName());
+    Console.WriteLine($"Таблица: {table.GetTableName()}");
 
-// Создание LINQ-запроса (пока только определение, без выполнения)
-var query = context.MainEntities.Where(m => m.Id == 1);
+// Создание LINQ-запроса в правильном синтаксисе
+var query = from entity in context.MainEntities
+            where entity.Id == 1
+            select entity;
 
 // Получение SQL-кода, который будет выполнен для этого запроса
+Console.WriteLine("\n=== SQL ЗАПРОС ===");
 Console.WriteLine(query.ToQueryString());
+
+// Дополнительные низкоуровневые операции
+Console.WriteLine("\n=== ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ===");
+
+// Получение информации о поставщике базы данных
+var providerName = context.Database.ProviderName;
+Console.WriteLine($"Провайдер: {providerName}");
+
+// Проверка возможности подключения
+try
+{
+    connection.Open();
+    Console.WriteLine($"Состояние подключения: {connection.State}");
+    connection.Close();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Ошибка подключения: {ex.Message}");
+}
 
 ```
 
