@@ -149,123 +149,160 @@ foreach (var e in allEntities)
 ```csharp
 
 using UltimateProject.Data;
-
 using UltimateProject.Models;
-
 using Microsoft.EntityFrameworkCore;
-
 using System;
-
 using System.Collections.Generic;
-
 using System.Linq;
-
 using System.IO;
 
-  
-
 namespace UltimateProject
-
 {
+    internal class Program
+    {
+        static void Main()
+        {
+            using var context = new GenericContext();
+            // 🗑️ Очистка и создание БД
+            context.Database.EnsureDeleted();
+            context.Database.EnsureCreated();
+            var connection = context.Database.GetDbConnection();
+            if (connection.DataSource != null)
+                Console.WriteLine($"База данных: {Path.GetFullPath(connection.DataSource)}");
 
-    internal class Program
+            // 📝 СОЗДАНИЕ ДАННЫХ
+            var mainEntities = new List<MainEntity>
+            {
+                new() { Name = "Технологическая Конференция", Description = "IT события", Location = "Москва" },
+                new() { Name = "Музыкальный Фестиваль", Description = "Живая музыка", Location = "Санкт-Петербург" },
+                new() { Name = "Научный Симпозиум", Description = "Исследования", Location = "Новосибирск" }
+            };
 
-    {
+            var relatedEntities = new List<RelatedEntity>
+            {
+                new() { Name = "Анна Иванова", Email = "anna@test.com" },
+                new() { Name = "Борис Петров", Email = "boris@test.com" },
+                new() { Name = "Светлана Сидорова", Email = "svetlana@test.com" },
+                new() { Name = "Дмитрий Козлов", Email = "dmitry@test.com" }
+            };
 
-        static void Main()
+            context.MainEntities.AddRange(mainEntities);
+            context.RelatedEntities.AddRange(relatedEntities);
+            context.SaveChanges();
 
-        {
+            // 🔗 СОЗДАНИЕ СВЯЗЕЙ
+            mainEntities[0].RelatedEntities.Add(relatedEntities[0]);
+            mainEntities[0].RelatedEntities.Add(relatedEntities[1]);
+            mainEntities[0].RelatedEntities.Add(relatedEntities[2]);
+            mainEntities[1].RelatedEntities.Add(relatedEntities[1]);
+            mainEntities[1].RelatedEntities.Add(relatedEntities[3]);
+            mainEntities[2].RelatedEntities.Add(relatedEntities[0]);
+            mainEntities[2].RelatedEntities.Add(relatedEntities[2]);
+            mainEntities[2].RelatedEntities.Add(relatedEntities[3]);
 
-            using var context = new GenericContext();
+            context.SaveChanges();
 
-            // 🗑️ Очистка и создание БД
+            // 🔥 LINQ ЗАПРОСЫ В ПРАВИЛЬНОМ СИНТАКСИСЕ
 
-            context.Database.EnsureDeleted();
+            Console.WriteLine("\n=== ВСЕ ОСНОВНЫЕ СУЩНОСТИ ===");
+            var allMainEntities = (from entity in context.MainEntities
+                                   select entity).ToList();
+            foreach (var entity in allMainEntities)
+            {
+                Console.WriteLine($"   {entity.Name} - {entity.Location}");
+            }
 
-            context.Database.EnsureCreated();
+            Console.WriteLine("\n=== СУЩНОСТИ С ВКЛЮЧЕННЫМИ СВЯЗЯМИ ===");
+            var entitiesWithRelations = (from entity in context.MainEntities.Include(m => m.RelatedEntities)
+                                         select entity).ToList();
+            foreach (var entity in entitiesWithRelations)
+            {
+                Console.WriteLine($"   {entity.Name}: {entity.RelatedEntities.Count} участников");
+                foreach (var related in entity.RelatedEntities)
+                {
+                    Console.WriteLine($"      - {related.Name} ({related.Email})");
+                }
+            }
 
-            var connection = context.Database.GetDbConnection();
+            Console.WriteLine("\n=== СТАТИСТИКА ПО СУЩНОСТЯМ ===");
+            var entityStats = (from entity in context.MainEntities
+                               select new
+                               {
+                                   EntityName = entity.Name,
+                                   ParticipantCount = entity.RelatedEntities.Count,
+                                   Location = entity.Location
+                               }).ToList();
+            foreach (var stat in entityStats)
+            {
+                Console.WriteLine($"   {stat.EntityName}: {stat.ParticipantCount} участников в {stat.Location}");
+            }
 
-            if (connection.DataSource != null)
+            Console.WriteLine("\n=== ГРУППИРОВКА ПО ЛОКАЦИЯМ ===");
+            var groupedByLocation = (from entity in context.MainEntities
+                                     group entity by entity.Location into g
+                                     select new
+                                     {
+                                         Location = g.Key,
+                                         Count = g.Count(),
+                                         Events = string.Join(", ", g.Select(e => e.Name))
+                                     }).ToList();
+            foreach (var group in groupedByLocation)
+            {
+                Console.WriteLine($"   {group.Location}: {group.Count} событий");
+                Console.WriteLine($"      События: {group.Events}");
+            }
 
-                Console.WriteLine($"База данных: {Path.GetFullPath(connection.DataSource)}");
+            Console.WriteLine("\n=== ФИЛЬТРАЦИЯ С ВКЛЮЧЕНИЕМ ===");
+            var filteredWithRelations = (from entity in context.MainEntities.Include(m => m.RelatedEntities)
+                                         where entity.RelatedEntities.Count >= 2
+                                         orderby entity.RelatedEntities.Count descending
+                                         select entity).ToList();
+            foreach (var entity in filteredWithRelations)
+            {
+                Console.WriteLine($"   {entity.Name}: {entity.RelatedEntities.Count} участников");
+            }
 
-  
+            Console.WriteLine("\n=== ПОИСК ПО ИМЕНИ ===");
+            var searchResults = (from entity in context.MainEntities
+                                 where entity.Name.Contains("Фестиваль") || entity.Name.Contains("Конференция")
+                                 select entity).ToList();
+            foreach (var entity in searchResults)
+            {
+                Console.WriteLine($"   Найдено: {entity.Name}");
+            }
 
-            // 📝 СОЗДАНИЕ ДАННЫХ
+            Console.WriteLine("\n=== СЛОЖНЫЙ ЗАПРОС С АГРЕГАЦИЕЙ ===");
+            var complexQuery = (from main in context.MainEntities
+                                from related in main.RelatedEntities
+                                group related by main.Name into g
+                                select new
+                                {
+                                    EventName = g.Key,
+                                    Participants = g.Count(),
+                                    Emails = string.Join("; ", g.Select(r => r.Email))
+                                }).ToList();
+            foreach (var result in complexQuery)
+            {
+                Console.WriteLine($"   {result.EventName}: {result.Participants} участников");
+                Console.WriteLine($"      Emails: {result.Emails}");
+            }
 
-            var mainEntities = new List<MainEntity>
+            // 📊 ДОПОЛНИТЕЛЬНАЯ ДИАГНОСТИКА
+            Console.WriteLine("\n=== ДИАГНОСТИКА БАЗЫ ДАННЫХ ===");
+            var tables = context.Model.GetEntityTypes();
+            foreach (var table in tables)
+            {
+                Console.WriteLine($"   Таблица: {table.GetTableName()}");
+            }
 
-            {
-
-                new() { Name = "Технологическая Конференция", Description = "IT события", Location = "Москва" },
-
-                new() { Name = "Музыкальный Фестиваль", Description = "Живая музыка", Location = "Санкт-Петербург" },
-
-                new() { Name = "Научный Симпозиум", Description = "Исследования", Location = "Новосибирск" }
-
-            };
-
-  
-
-            var relatedEntities = new List<RelatedEntity>
-
-            {
-
-                new() { Name = "Анна Иванова", Email = "anna@test.com" },
-
-                new() { Name = "Борис Петров", Email = "boris@test.com" },
-
-                new() { Name = "Светлана Сидорова", Email = "svetlana@test.com" },
-
-                new() { Name = "Дмитрий Козлов", Email = "dmitry@test.com" }
-
-            };
-
-  
-
-            context.MainEntities.AddRange(mainEntities);
-
-            context.RelatedEntities.AddRange(relatedEntities);
-
-            context.SaveChanges();
-
-  
-
-            // 🔗 СОЗДАНИЕ СВЯЗЕЙ
-
-            mainEntities[0].RelatedEntities.Add(relatedEntities[0]);
-
-            mainEntities[0].RelatedEntities.Add(relatedEntities[1]);
-
-            mainEntities[0].RelatedEntities.Add(relatedEntities[2]);
-
-            mainEntities[1].RelatedEntities.Add(relatedEntities[1]);
-
-            mainEntities[1].RelatedEntities.Add(relatedEntities[3]);
-
-            mainEntities[2].RelatedEntities.Add(relatedEntities[0]);
-
-            mainEntities[2].RelatedEntities.Add(relatedEntities[2]);
-
-            mainEntities[2].RelatedEntities.Add(relatedEntities[3]);
-
-  
-
-            context.SaveChanges();
-
-  
-
-            // 🔥 LINQ ЗАПРОСЫ
-
-            ...
-
-        }
-
-    }
-
+            // Пример получения SQL для запроса
+            var sampleQuery = from entity in context.MainEntities
+                              where entity.Location == "Москва"
+                              select entity;
+            Console.WriteLine($"\nSQL запрос: {sampleQuery.ToQueryString()}");
+        }
+    }
 }
-
 ```
 
   
