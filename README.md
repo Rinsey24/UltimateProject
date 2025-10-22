@@ -1,6 +1,7 @@
 # Заголовок украли цыгане
 # Интеграция контекстов и LINQ-запросов в Entity Framework Core
   
+<img src="https://static.insales-cdn.com/r/2Nb1Mhj13wQ/rs:fit:1000:0:1/q:100/plain/images/products/1/910/620340110/150902.jpg@jpg" width="300" alt="Описание">
 
 ##  Интеграция 2 контекстов
 
