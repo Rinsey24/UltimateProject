@@ -3,6 +3,12 @@
   
 <img src="https://static.insales-cdn.com/r/2Nb1Mhj13wQ/rs:fit:1000:0:1/q:100/plain/images/products/1/910/620340110/150902.jpg@jpg" width="300" alt="Описание">
 
+<img src="https://nflg.ru/d/abz_solo_5000_m_v_chelyabinske_17.jpg" width="300" alt="Все отправляются на завод">
+
+**Все отправляются на завод**
+
+---
+
 ##  Интеграция 2 контекстов
 
   
